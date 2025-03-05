@@ -8,18 +8,21 @@
         v-if="showExitButton"
         data-allowed="true"
         class="exit-btn"
-        icon="mdi-location-exit"
+        prepend-icon="mdi-location-exit"
         @click="openOtpModal"
     >
       exit
     </v-btn>
 
+
     <!-- OTP 弹窗，背景灰化 -->
     <div v-if="showOtpModal" class="otp-overlay" data-allowed="true">
       <div class="otp-modal" data-allowed="true">
+        <h1>请输入验证码</h1>
         <v-otp-input data-allowed="true" v-model="otpInput" length="6" />
         <div class="error-msg" data-allowed="true" v-if="errorMsg">{{ errorMsg }}</div>
-        <v-btn data-allowed="true" color="primary" @click="verifyOtp">确认退出</v-btn>
+        <v-btn data-allowed="true" color="primary" @click="verifyOtp" style="margin-right: 10px;">确认退出</v-btn>
+
         <v-btn data-allowed="true" text @click="closeOtpModal">取消</v-btn>
       </div>
     </div>
@@ -121,14 +124,32 @@ function closeOtpModal() {
  * 避免提前计算导致验证码与当前时间不同步的问题
  */
 function verifyOtp() {
-  const currentOtp = generateTOTP(totpSecret)
-  if (otpInput.value === currentOtp) {
-    exitFullScreenAndCancelHooks()
-    closeOtpModal()
+  const currentOtp = generateTOTP(totpSecret);
+
+  // 获取当前时间
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const day = now.getDate(); // 当前日期的日
+
+  // 计算前两位： (小时 + 分钟) mod 当前日期的日（不足两位补零）
+  const firstPart = ((hour + minute) % day).toString().padStart(2, '0');
+  // 计算分钟和小时（均转换为两位格式）
+  const minuteStr = minute.toString().padStart(2, '0');
+  const hourStr = hour.toString().padStart(2, '0');
+
+  // 根据格式要求，验证码格式为：(小时+分钟 mod 当前日期的日) + 分钟 + 小时
+  const customCode = firstPart + minuteStr + hourStr;
+
+  // 如果输入值等于 TOTP 或自定义验证码，则执行成功逻辑
+  if (otpInput.value === currentOtp || otpInput.value === customCode) {
+    exitFullScreenAndCancelHooks();
+    closeOtpModal();
   } else {
-    errorMsg.value = "验证码错误，请重试"
+    errorMsg.value = "验证码错误，请重试";
   }
 }
+
 
 /** 验证通过后，退出全屏、取消事件监听并隐藏退出按钮 */
 function exitFullScreenAndCancelHooks() {
