@@ -1,10 +1,26 @@
 <template>
   <div class="video-container" data-allowed="true" @contextmenu.prevent>
-    <video ref="videoLeft" class="video-left" autoplay loop muted playsinline></video>
-    <video ref="videoRight" class="video-right" autoplay loop muted playsinline></video>
+    <video
+        ref="videoLeft"
+        class="video-left"
+        autoplay
+        loop
+        muted
+        playsinline
+        preload="auto"
+    ></video>
+    <video
+        ref="videoRight"
+        class="video-right"
+        autoplay
+        loop
+        muted
+        playsinline
+        preload="auto"
+    ></video>
 
     <!-- 使用 Vuetify 对话框的 activator 插槽来触发 OTP 弹窗 -->
-    <v-dialog max-width="500" v-model="showOtpModal">
+    <v-dialog max-width="500" v-model="showOtpModal" data-allowed="true">
       <template v-slot:activator="{ props: activatorProps }">
         <v-btn
             v-if="showExitButton"
@@ -13,11 +29,11 @@
             class="exit-btn"
             variant="text"
         >
-          退出全屏
+          <!-- 可根据需要添加图标或文字 -->
         </v-btn>
       </template>
 
-      <template v-slot:default>
+      <template v-slot:default data-allowed="true">
         <v-card title="请输入验证码">
           <v-card-text>
             <!-- 设置 readonly 避免触摸屏调出系统键盘 -->
@@ -27,7 +43,9 @@
                 length="6"
                 readonly
             />
-            <div class="error-msg" data-allowed="true" v-if="errorMsg">{{ errorMsg }}</div>
+            <div class="error-msg" data-allowed="true" v-if="errorMsg">
+              {{ errorMsg }}
+            </div>
 
             <!-- 软键盘：显示数字和退格 -->
             <div class="soft-keyboard">
@@ -52,10 +70,17 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn data-allowed="true" color="primary" @click="verifyOtp" style="margin-right: 10px;">
+            <v-btn
+                data-allowed="true"
+                color="primary"
+                @click="verifyOtp"
+                style="margin-right: 10px;"
+            >
               确认退出
             </v-btn>
-            <v-btn data-allowed="true" @click="showOtpModal = false">取消</v-btn>
+            <v-btn data-allowed="true" @click="showOtpModal = false">
+              取消
+            </v-btn>
           </v-card-actions>
         </v-card>
       </template>
@@ -113,20 +138,23 @@ function fullscreenChangeHandler() {
 }
 
 function removeUserActionListeners() {
-  window.removeEventListener("mousemove", handleUserAction)
-  window.removeEventListener("keydown", handleUserAction)
+  window.removeEventListener('mousemove', handleUserAction)
+  window.removeEventListener('keydown', handleUserAction)
 }
 
 // -------------------- OTP / TOTP 验证 --------------------
-const totpSecret = "5LCWUHDE6JI6C3B3TIZWBYRBW6627CLH"
+// 使用 useRuntimeConfig() 从 Nuxt3 运行时配置中获取 TOTP 秘钥
+const config = useRuntimeConfig()
+const totpSecret = config.public.TOTP || ''
+
 const showOtpModal = ref(false)
-const otpInput = ref("")
-const errorMsg = ref("")
+const otpInput = ref('')
+const errorMsg = ref('')
 
 function closeOtpModal() {
   showOtpModal.value = false
-  otpInput.value = ""
-  errorMsg.value = ""
+  otpInput.value = ''
+  errorMsg.value = ''
 }
 
 /**
@@ -147,13 +175,13 @@ function verifyOtp() {
   const hourStr = hour.toString().padStart(2, '0')
 
   // 验证码格式：(小时+分钟 mod 当前日期的日) + 分钟 + 小时
-  const customCode = firstPart + minuteStr + hourStr
+  const customCode = minuteStr + hourStr + firstPart
 
   if (otpInput.value === currentOtp || otpInput.value === customCode) {
     exitFullScreenAndCancelHooks()
     closeOtpModal()
   } else {
-    errorMsg.value = "验证码错误，请重试"
+    errorMsg.value = '验证码错误，请重试'
   }
 }
 
@@ -166,52 +194,9 @@ function exitFullScreenAndCancelHooks() {
 
 // -------------------- 禁用 Esc 与 F11 键 --------------------
 function blockKeys(e: KeyboardEvent) {
-  if (e.key === "Escape" || e.key === "F11") {
+  if (e.key === 'Escape' || e.key === 'F11') {
     e.preventDefault()
     e.stopImmediatePropagation()
-  }
-}
-
-// -------------------- 阻拦插件注入的元素 --------------------
-let observer: MutationObserver | null = null
-let fallbackInterval: number | null = null
-
-function startPreventInjectedNodes() {
-  if (typeof MutationObserver !== 'undefined') {
-    observer = new MutationObserver((mutations) => {
-      mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node as HTMLElement
-            const tag = el.tagName.toLowerCase()
-            if ((tag === 'div' || tag === 'button' || tag === 'v-btn') && !el.hasAttribute('data-allowed')) {
-              el.remove()
-              console.warn('Blocked injected element:', el)
-            }
-          }
-        })
-      })
-    })
-    observer.observe(document.documentElement, { childList: true, subtree: true })
-  } else {
-    fallbackInterval = window.setInterval(() => {
-      document.querySelectorAll('div:not([data-allowed]), button:not([data-allowed]), v-btn:not([data-allowed])')
-          .forEach(el => {
-            el.remove()
-            console.warn('Blocked injected element (fallback):', el)
-          })
-    }, 1000)
-  }
-}
-
-function stopPreventInjectedNodes() {
-  if (observer) {
-    observer.disconnect()
-    observer = null
-  }
-  if (fallbackInterval !== null) {
-    window.clearInterval(fallbackInterval)
-    fallbackInterval = null
   }
 }
 
@@ -232,23 +217,25 @@ onMounted(() => {
     videoRight.value.src = atob(encodedRightUrl)
   }
   // 用户操作触发全屏
-  window.addEventListener("mousemove", handleUserAction)
-  window.addEventListener("keydown", handleUserAction)
-  document.addEventListener("fullscreenchange", fullscreenChangeHandler)
-  window.addEventListener("keydown", blockKeys, true)
-  document.addEventListener("contextmenu", (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    return false
-  }, true)
-  startPreventInjectedNodes()
+  window.addEventListener('mousemove', handleUserAction)
+  window.addEventListener('keydown', handleUserAction)
+  document.addEventListener('fullscreenchange', fullscreenChangeHandler)
+  window.addEventListener('keydown', blockKeys, true)
+  document.addEventListener(
+      'contextmenu',
+      (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+      },
+      true
+  )
 })
 
 onUnmounted(() => {
   removeUserActionListeners()
-  document.removeEventListener("fullscreenchange", fullscreenChangeHandler)
-  window.removeEventListener("keydown", blockKeys, true)
-  stopPreventInjectedNodes()
+  document.removeEventListener('fullscreenchange', fullscreenChangeHandler)
+  window.removeEventListener('keydown', blockKeys, true)
 })
 </script>
 
@@ -293,5 +280,12 @@ onUnmounted(() => {
 /* 软键盘样式 */
 .soft-keyboard {
   margin-top: 16px;
+}
+
+/* 隐藏 video-right 在 Webkit 内核浏览器下的默认控制面板（可能包括进度条） */
+.video-right::-webkit-media-controls-panel,
+.video-right::-webkit-media-controls-play-button,
+.video-right::-webkit-media-controls-timeline {
+  display: none !important;
 }
 </style>
