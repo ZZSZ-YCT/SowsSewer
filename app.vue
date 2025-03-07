@@ -145,7 +145,7 @@ function removeUserActionListeners() {
 // -------------------- OTP / TOTP 验证 --------------------
 // 使用 useRuntimeConfig() 从 Nuxt3 运行时配置中获取 TOTP 秘钥
 const config = useRuntimeConfig()
-const totpSecret = config.public.TOTP || ''
+const totpSecret = config.public.TOTP_SECRET || ''
 
 const showOtpModal = ref(false)
 const otpInput = ref('')

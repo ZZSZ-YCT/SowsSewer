@@ -4,7 +4,7 @@ import { md3 } from 'vuetify/blueprints'
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      TOTP: process.env.TOTP || ''
+      TOTP_SECRET: ""
     }
   },
   compatibilityDate: '2024-11-01',
